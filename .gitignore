@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Runtime data (auto-generated)
+game-data.json
+*.db
+*.db-shm
+*.db-wal
+
+# Backups
+*.backup
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Temp
+*.tmp
+*.log

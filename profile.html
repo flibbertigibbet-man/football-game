@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>个人主页 · 足球球员竞猜</title>
+  <style>
+    :root {
+      --bg: #0A0F1E; --surface: #141B2E; --surface-light: #1C2541;
+      --border: #253050; --text: #E9EEFA; --text-muted: #8A94B5; --text-dim: #5A6485;
+      --green: #22C55E; --gold: #EAB308; --accent: #00C2A8; --danger: #EF4444;
+      --p1: #38BDF8; --p2: #F87171; --radius: 8px; --radius-lg: 12px;
+      --font: -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 20px; background: var(--surface); border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 10;
+    }
+    header h1 { font-size: 18px; }
+    .btn-back {
+      color: var(--text-muted); text-decoration: none; font-size: 14px;
+      transition: color .2s; padding: 6px 12px; border-radius: var(--radius);
+      border: 1px solid var(--border); background: transparent; cursor: pointer; font-family: inherit;
+    }
+    .btn-back:hover { color: var(--text); border-color: var(--accent); }
+
+    main { max-width: 600px; margin: 0 auto; padding: 24px 16px; }
+
+    /* Player identity */
+    .player-identity {
+      text-align: center; margin-bottom: 28px;
+    }
+    .avatar {
+      width: 72px; height: 72px; border-radius: 50%; background: var(--surface-light);
+      border: 3px solid var(--border); display: flex; align-items: center;
+      justify-content: center; font-size: 36px; margin: 0 auto 10px;
+    }
+    .name-display {
+      font-size: 22px; font-weight: 700; cursor: pointer; transition: color .2s;
+      border: none; background: none; color: var(--text); text-align: center;
+      font-family: inherit; width: 100%;
+    }
+    .name-display:hover { color: var(--accent); }
+    .name-display:focus { outline: none; color: var(--accent); }
+    .name-hint { font-size: 11px; color: var(--text-dim); }
+
+    /* Stat cards */
+    .section-title {
+      font-size: 13px; font-weight: 600; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;
+    }
+    .stat-grid {
+      display: grid; grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px; margin-bottom: 24px;
+    }
+    .stat-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px 12px; text-align: center;
+    }
+    .stat-val {
+      font-size: 26px; font-weight: 800; line-height: 1.2;
+    }
+    .stat-val.green { color: var(--green); }
+    .stat-val.gold { color: var(--gold); }
+    .stat-val.p1 { color: var(--p1); }
+    .stat-val.p2 { color: var(--p2); }
+    .stat-label {
+      font-size: 11px; color: var(--text-muted); margin-top: 4px;
+    }
+
+    /* Tooltip */
+    .tooltip-trigger {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 16px; height: 16px; border-radius: 50%; font-size: 10px;
+      font-weight: 700; background: var(--border); color: var(--text-muted);
+      cursor: help; vertical-align: middle; margin-left: 2px;
+      position: relative; user-select: none;
+    }
+    .tooltip-trigger:hover { background: var(--accent); color: #000; }
+    .tooltip-trigger .tooltip-popup {
+      display: none; position: absolute; bottom: calc(100% + 8px); left: 50%;
+      transform: translateX(-50%); background: var(--surface-light);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 10px 14px; font-size: 12px; font-weight: 400; color: var(--text-muted);
+      line-height: 1.6; white-space: nowrap; z-index: 20;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5); text-align: left;
+    }
+    .tooltip-trigger:hover .tooltip-popup { display: block; }
+
+    /* Difficulty row */
+    .diff-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px; background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); margin-bottom: 6px;
+    }
+    .diff-row .diff-label { font-size: 14px; font-weight: 600; }
+    .diff-row .diff-stats { font-size: 13px; color: var(--text-muted); }
+    .diff-row .diff-stats strong { color: var(--text); }
+
+    .empty-state {
+      text-align: center; padding: 40px 16px; color: var(--text-dim); font-size: 14px;
+    }
+    .empty-state .empty-icon { font-size: 40px; margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>👤 个人主页</h1>
+  <button class="btn-back" onclick="window.location.href='index.html'">← 返回游戏</button>
+</header>
+
+<main>
+  <!-- Identity -->
+  <div class="player-identity">
+    <div class="avatar">⚽</div>
+    <input class="name-display" id="playerNameInput" maxlength="12" spellcheck="false">
+    <div class="name-hint">点击名字可修改</div>
+  </div>
+
+  <!-- Single mode overall -->
+  <div class="section-title">🎮 单人 AI 挑战</div>
+  <div class="stat-grid" id="singleOverall"></div>
+
+  <!-- Guess Efficiency -->
+  <div style="text-align:center;margin-bottom:24px;">
+    <div class="stat-card" style="display:inline-block;min-width:160px;">
+      <div class="stat-val gold" id="efficiencyVal">--</div>
+      <div class="stat-label">
+        猜测精准度
+        <span class="tooltip-trigger">?<span class="tooltip-popup">猜中时用的次数越少，精准度越高<br>1次猜中=100% · 8次猜中=0%<br>未猜中不计入</span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Difficulty breakdown -->
+  <div class="section-title">📊 各难度详情</div>
+  <div id="diffBreakdown"></div>
+
+  <!-- Duo mode -->
+  <div class="section-title" style="margin-top:24px;">👥 双人对战</div>
+  <div class="stat-grid" id="duoStats"></div>
+</main>
+
+<script>
+var STATS_KEY = 'football_guess_stats';
+
+function loadStats() {
+  try {
+    var raw = localStorage.getItem(STATS_KEY);
+    return raw ? JSON.parse(raw) : getDefaultStats();
+  } catch (e) { return getDefaultStats(); }
+}
+
+function getDefaultStats() {
+  return {
+    playerName: '球迷',
+    single: { 1:{played:0,won:0,guesses:0}, 2:{played:0,won:0,guesses:0}, 3:{played:0,won:0,guesses:0}, 4:{played:0,won:0,guesses:0}, 5:{played:0,won:0,guesses:0} },
+    duo: { played: 0, wonP1: 0, wonP2: 0, guesses: 0 }
+  };
+}
+
+function saveStats(stats) {
+  try { localStorage.setItem(STATS_KEY, JSON.stringify(stats)); } catch (e) {}
+}
+
+var DIFF_NAMES = { 1: '🍼 简单', 2: '🎯 较易', 3: '⚡ 中等', 4: '🔥 较难', 5: '💀 困难' };
+
+function render() {
+  var s = loadStats();
+
+  // Player name
+  var nameInput = document.getElementById('playerNameInput');
+  nameInput.value = s.playerName || '球迷';
+  nameInput.addEventListener('change', function() {
+    var v = this.value.trim();
+    if (v && v.length <= 12) {
+      s.playerName = v;
+      saveStats(s);
+    }
+  });
+
+  // Single overall
+  var totalPlayed = 0, totalWon = 0, totalGuesses = 0;
+  for (var d = 1; d <= 5; d++) {
+    totalPlayed += s.single[d].played;
+    totalWon += s.single[d].won;
+    totalGuesses += s.single[d].guesses;
+  }
+  var winRate = totalPlayed > 0 ? Math.round(totalWon / totalPlayed * 100) : 0;
+  var avgGuesses = totalWon > 0 ? (totalGuesses / totalWon).toFixed(1) : '--';
+
+  document.getElementById('singleOverall').innerHTML =
+    '<div class="stat-card"><div class="stat-val">' + totalPlayed + '</div><div class="stat-label">总局数</div></div>' +
+    '<div class="stat-card"><div class="stat-val green">' + winRate + '%</div><div class="stat-label">胜率</div></div>' +
+    '<div class="stat-card"><div class="stat-val gold">' + avgGuesses + '</div><div class="stat-label">均猜次数</div></div>';
+
+  // Efficiency
+  var eff = totalWon > 0 ? Math.round(Math.max(0, (8 - (totalGuesses / totalWon)) / 7 * 100)) : 0;
+  document.getElementById('efficiencyVal').textContent = totalWon > 0 ? eff + '%' : '--';
+
+  // Difficulty breakdown
+  var diffHtml = '';
+  for (var d2 = 1; d2 <= 5; d2++) {
+    var ds = s.single[d2];
+    var dWinRate = ds.played > 0 ? Math.round(ds.won / ds.played * 100) : 0;
+    var dAvg = ds.won > 0 ? (ds.guesses / ds.won).toFixed(1) : '--';
+    diffHtml += '<div class="diff-row">' +
+      '<span class="diff-label">' + DIFF_NAMES[d2] + '</span>' +
+      '<span class="diff-stats">' +
+        ds.played + '局 · 胜率<strong>' + dWinRate + '%</strong> · 均猜<strong>' + dAvg + '</strong>次' +
+      '</span>' +
+      '</div>';
+  }
+  document.getElementById('diffBreakdown').innerHTML = diffHtml;
+
+  // Duo
+  var duo = s.duo;
+  var duoWinRate = duo.played > 0 ? Math.round((duo.wonP1 + duo.wonP2) / duo.played * 100) : 0;
+  var duoAvg = (duo.wonP1 + duo.wonP2) > 0 ? (duo.guesses / (duo.wonP1 + duo.wonP2)).toFixed(1) : '--';
+  document.getElementById('duoStats').innerHTML =
+    '<div class="stat-card"><div class="stat-val">' + duo.played + '</div><div class="stat-label">总对局</div></div>' +
+    '<div class="stat-card"><div class="stat-val green">' + duoWinRate + '%</div><div class="stat-label">胜率</div></div>' +
+    '<div class="stat-card"><div class="stat-val gold">' + duoAvg + '</div><div class="stat-label">均猜次数</div></div>' +
+    '<div class="stat-card"><div class="stat-val p1">' + duo.wonP1 + '</div><div class="stat-label">P1胜场</div></div>' +
+    '<div class="stat-card"><div class="stat-val p2">' + duo.wonP2 + '</div><div class="stat-label">P2胜场</div></div>' +
+    '<div class="stat-card"><div class="stat-val">' + (duo.played - duo.wonP1 - duo.wonP2) + '</div><div class="stat-label">平/负</div></div>';
+}
+
+render();
+</script>
+</body>
+</html>

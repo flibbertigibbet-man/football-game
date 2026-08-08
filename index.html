@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>足球球员竞猜 ⚽</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚽</text></svg>">
+</head>
+<body>
+
+  <!-- ========== 头部导航 ========== -->
+  <header class="app-header">
+    <div class="logo">⚽</div>
+    <h1 class="title">足球球员竞猜</h1>
+    <div class="header-actions">
+      <button id="btnRules">玩法说明</button>
+      <button id="btnReset">重新开始</button>
+      <button id="btnProfile" onclick="window.location.href='profile.html'">👤 个人</button>
+    </div>
+  </header>
+
+  <!-- ========== 主内容区 ========== -->
+  <main id="app">
+
+    <!-- 菜单视图 -->
+    <section id="menuView" class="view">
+      <div class="menu-stack">
+
+        <!-- 单人挑战卡片 -->
+        <div class="menu-item">
+          <div class="mode-card" data-mode="single" tabindex="0" role="button">
+            <div class="mode-icon">🧑</div>
+            <h2>单人挑战</h2>
+            <p>系统随机选定球员 · <strong>8次</strong>机会</p>
+          </div>
+          <div class="menu-drawer" id="singleDrawer">
+            <h3>选择难度</h3>
+            <div class="difficulty-slider-wrap">
+              <div class="slider-labels"><span>🟢 简单</span><span>🔴 困难</span></div>
+              <input type="range" id="difficultySlider" min="1" max="5" value="3" step="1">
+            </div>
+            <button id="btnStartSingle" class="best-of-btn selected">开始挑战</button>
+            <button class="btn-back drawer-back">← 返回</button>
+          </div>
+        </div>
+
+        <!-- 在线对战卡片 -->
+        <div class="menu-item">
+          <div class="mode-card" data-mode="online" tabindex="0" role="button">
+            <div class="mode-icon">🌐</div>
+            <h2>在线对战</h2>
+            <p>匹配真人 1v1 · ELO 排位</p>
+          </div>
+          <div class="menu-drawer" id="onlineDrawer">
+            <div class="online-player-card">
+              <div class="online-avatar">⚽</div>
+              <div class="online-info">
+                <div class="online-name" id="onlinePlayerName">---</div>
+                <div class="online-name-hint">匿名身份 · 点击修改昵称</div>
+              </div>
+              <div class="online-elo">
+                <div class="elo-score" id="onlineElo">---</div>
+                <div class="elo-rank" id="onlineRank">---</div>
+              </div>
+            </div>
+            <button id="btnStartMatch" class="btn-match">🔍 开始匹配</button>
+            <button id="btnCancelMatch" class="btn-match cancel hidden">⏳ 取消匹配</button>
+            <div id="matchStatus" class="match-status hidden"></div>
+            <button id="btnShowLeaderboard" class="btn-secondary">🏆 排行榜</button>
+            <button class="btn-back drawer-back">← 返回</button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 单人游戏视图 -->
+    <section id="gameView" class="view hidden">
+      <div class="game-status-bar">
+        <span id="roundInfo">第1局</span>
+      </div>
+      <div class="input-area">
+        <div class="autocomplete-wrap">
+          <input type="text" id="playerInput" placeholder="输入球员名称（支持中英文）..."
+            autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+          <ul id="dropdown" class="dropdown hidden" role="listbox"></ul>
+        </div>
+        <button id="btnSubmit" class="btn-submit">提交猜测</button>
+      </div>
+      <span id="errorMsg" class="error-msg hidden"></span>
+      <div class="guess-info">
+        <span>剩余猜测: <span id="guessesLeft">8</span>/8</span>
+        <button id="btnGiveUp" class="btn-give-up">🏳️ 放弃</button>
+      </div>
+      <div class="grid-wrap">
+        <table class="guess-grid">
+          <thead>
+            <tr>
+              <th>姓名</th><th>状态</th><th>俱乐部</th><th>国籍</th>
+              <th>位置</th><th title="世界杯冠军">世界杯</th>
+              <th title="金球奖">金球奖</th><th title="欧冠冠军">欧冠</th><th>年龄</th>
+            </tr>
+          </thead>
+          <tbody id="guessRows">
+            <tr><td colspan="9" class="grid-empty">输入球员名称开始猜测...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 在线对战视图 -->
+    <section id="onlineGameView" class="view hidden">
+      <div class="online-topbar">
+        <span class="online-you-name" id="onlineYouName">我</span>
+        <span class="online-you-wins" id="onlineYouWins">0</span>
+        <span class="online-vs">VS</span>
+        <span class="online-opp-wins" id="onlineOppWins">0</span>
+        <span class="online-opp-name" id="onlineOppName">对手</span>
+      </div>
+      <div id="onlineAfkWarn" class="online-afk-warn hidden">
+        🔌 对手已断开连接，等待重连 <span id="afkCountdown">30</span>s...
+      </div>
+
+      <div class="input-area">
+        <div class="autocomplete-wrap">
+          <input type="text" id="onlinePlayerInput" placeholder="输入球员名称（支持中英文）..."
+            autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+          <ul id="onlineDropdown" class="dropdown hidden" role="listbox"></ul>
+        </div>
+        <button id="btnOnlineSubmit" class="btn-submit">提交猜测</button>
+      </div>
+      <span id="onlineErrorMsg" class="error-msg hidden"></span>
+      <div class="guess-info">
+        <span>剩余: <span id="onlineYouGuesses">8</span>次</span>
+        <button id="btnOnlineGiveUp" class="btn-give-up">🏳️ 认输</button>
+      </div>
+
+      <div class="online-tables-wrap">
+        <div class="online-table-panel you">
+          <div class="panel-hdr">👤 你的猜测</div>
+          <div class="grid-wrap">
+          <table class="guess-grid mini">
+            <thead><tr>
+              <th>姓名</th><th>状态</th><th>俱乐部</th><th>国籍</th>
+              <th>位置</th><th title="世界杯">世界杯</th><th title="金球奖">金球奖</th><th title="欧冠">欧冠</th><th>年龄</th>
+            </tr></thead>
+            <tbody id="onlineYouRows"><tr><td colspan="9" class="grid-empty">等待开始...</td></tbody>
+          </table>
+          </div>
+        </div>
+        <div class="online-table-panel opp">
+          <div class="panel-hdr opp-hdr">🔒 对手 · 已猜 <span id="onlineOppCount">0</span> 次</div>
+          <div class="opp-dots-wrap" id="onlineOppDots">
+            <div class="grid-empty" style="padding:20px;">等待对手...</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ========== 弹窗层 ========== -->
+  <div id="modalLayer" class="modal-layer hidden">
+    <div class="modal-card">
+      <h2 id="modalTitle"></h2>
+      <div id="modalBody" class="modal-body"></div>
+      <div id="modalActions" class="modal-actions"></div>
+    </div>
+  </div>
+
+  <!-- 排行榜弹窗 -->
+  <div id="leaderboardModal" class="modal-layer hidden">
+    <div class="modal-card" style="max-width:500px;">
+      <h2>🏆 排行榜</h2>
+      <div class="modal-body" id="leaderboardBody" style="max-height:400px;overflow-y:auto;">
+        <p style="color:var(--text-muted);">加载中...</p>
+      </div>
+      <div class="modal-actions">
+        <button id="btnCloseLeaderboard" class="btn-primary">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 反馈 -->
+  <button id="btnFeedback" class="feedback-fab" title="反馈">💬</button>
+  <div id="feedbackModal" class="modal-layer hidden">
+    <div class="modal-card">
+      <h2>💬 反馈</h2>
+      <div class="modal-body">
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">发现数据错误或有什么建议？告诉我们！</p>
+        <textarea id="feedbackText" style="width:100%;height:120px;background:var(--surface-light);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:10px;font-family:inherit;font-size:14px;resize:vertical;" placeholder="请输入反馈内容..."></textarea>
+      </div>
+      <div class="modal-actions">
+        <button id="btnFeedbackCancel" class="btn-secondary">取消</button>
+        <button id="btnFeedbackSubmit" class="btn-primary">💾 提交</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/data.js?v=2"></script>
+  <script src="js/identity.js?v=3"></script>
+  <script src="js/network.js?v=3"></script>
+  <script src="js/game.js?v=5"></script>
+</body>
+</html>

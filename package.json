@@ -1,0 +1,13 @@
+{
+  "name": "football-guessing-game",
+  "version": "2.0.0",
+  "description": "足球球员竞猜游戏 - 在线1v1对战版",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js",
+    "dev": "node server/server.js"
+  },
+  "dependencies": {
+    "ws": "^8.21.3"
+  }
+}

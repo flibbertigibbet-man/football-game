@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>球员数据库管理后台</title>
+  <style>
+    :root {
+      --bg: #0A0F1E; --surface: #141B2E; --surface-light: #1C2541;
+      --border: #253050; --text: #E9EEFA; --text-muted: #8A94B5;
+      --green: #22C55E; --gold: #EAB308; --accent: #00C2A8;
+      --danger: #EF4444; --radius: 8px;
+      --font: -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    header {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 12px 20px; display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100; flex-wrap: wrap; gap: 10px;
+    }
+    header h1 { font-size: 18px; }
+    .header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    button {
+      font-family: inherit; cursor: pointer; border: none; border-radius: var(--radius);
+      padding: 8px 16px; font-size: 13px; font-weight: 600; transition: all .2s;
+    }
+    .btn-accent { background: var(--accent); color: #000; }
+    .btn-accent:hover { filter: brightness(1.2); }
+    .btn-outline { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+    .btn-outline:hover { color: var(--text); border-color: var(--accent); }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-sm { padding: 4px 10px; font-size: 11px; }
+
+    main { padding: 16px 20px; max-width: 1400px; margin: 0 auto; }
+
+    /* Controls */
+    .controls {
+      display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center;
+    }
+    .controls input, .controls select {
+      padding: 8px 12px; background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); color: var(--text); font-size: 13px; font-family: inherit;
+    }
+    .controls input { flex: 1; min-width: 200px; }
+    .controls input:focus, .controls select:focus { border-color: var(--accent); outline: none; }
+
+    /* Stats */
+    .stats { display: flex; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
+    .stat-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 12px 16px; text-align: center; min-width: 80px;
+    }
+    .stat-card .stat-val { font-size: 24px; font-weight: 800; }
+    .stat-card .stat-label { font-size: 11px; color: var(--text-muted); }
+
+    /* Table */
+    .table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
+    table { width: 100%; min-width: 1100px; border-collapse: collapse; font-size: 12px; }
+    thead { position: sticky; top: 0; z-index: 2; }
+    thead th {
+      background: var(--surface-light); padding: 8px 6px; text-align: left; font-weight: 600;
+      color: var(--text-muted); border-bottom: 2px solid var(--border); white-space: nowrap;
+      cursor: pointer; user-select: none;
+    }
+    thead th:hover { color: var(--text); }
+    thead th .sort-arrow { font-size: 10px; margin-left: 2px; }
+    tbody td { padding: 6px; border-bottom: 1px solid rgba(37,48,80,0.4); vertical-align: middle; }
+    tbody tr:hover { background: rgba(255,255,255,0.02); }
+    tbody tr.row-retired { opacity: 0.7; }
+    .badge {
+      display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px;
+      font-weight: 600;
+    }
+    .badge-active { background: rgba(34,197,94,0.2); color: var(--green); }
+    .badge-retired { background: rgba(239,68,68,0.2); color: var(--danger); }
+    .badge-fame5 { background: rgba(234,179,8,0.25); color: var(--gold); }
+    .fame-stars { color: var(--gold); font-size: 12px; }
+    .actions-cell { display: flex; gap: 4px; }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center; z-index: 200; padding: 20px;
+    }
+    .modal-overlay.hidden { display: none; }
+    .modal {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      padding: 24px; max-width: 600px; width: 100%; max-height: 85vh; overflow-y: auto;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+    }
+    .modal h2 { font-size: 18px; margin-bottom: 16px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-grid .full { grid-column: 1 / -1; }
+    .form-group { display: flex; flex-direction: column; gap: 4px; }
+    .form-group label { font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; }
+    .form-group input, .form-group select, .form-group textarea {
+      padding: 8px 10px; background: var(--surface-light); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text); font-size: 14px; font-family: inherit;
+    }
+    .form-group textarea { min-height: 60px; resize: vertical; }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+      border-color: var(--accent); outline: none;
+    }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 20px; right: 20px; z-index: 300;
+      padding: 12px 20px; border-radius: var(--radius); font-weight: 600; font-size: 14px;
+      animation: slideUp 0.3s ease;
+    }
+    .toast-success { background: var(--green); color: #000; }
+    .toast-error { background: var(--danger); color: #fff; }
+    @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+    @media (max-width: 768px) {
+      header { padding: 10px 12px; }
+      main { padding: 12px; }
+      .form-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>⚽ 球员数据库管理后台</h1>
+  <div class="header-actions">
+    <button class="btn-accent" onclick="openAddModal()">+ 添加球员</button>
+    <button class="btn-outline" onclick="exportData()">📋 导出 data.js</button>
+    <button class="btn-outline" onclick="window.location.reload()">🔄 重新加载</button>
+    <a href="../index.html" style="color:var(--text-muted);font-size:13px;text-decoration:none;padding:8px;">← 返回游戏</a>
+  </div>
+</header>
+
+<main>
+  <!-- 权重调节面板 -->
+  <section style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:20px;" id="weightPanel">
+    <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="document.getElementById('weightContent').classList.toggle('hidden')">
+      <h3 style="font-size:16px;margin:0;">🎚️ 球员出现概率权重</h3>
+      <span style="color:var(--text-muted);font-size:12px;">点击展开/收起</span>
+    </div>
+    <div id="weightContent">
+      <p style="font-size:12px;color:var(--text-muted);margin:8px 0 16px;">权重越高越容易被AI选为目标。×0.1≈几乎不出现，×1=正常，×5=概率翻5倍。</p>
+
+      <h4 style="font-size:14px;margin-bottom:8px;">按状态</h4>
+      <div id="statusWeights" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;"></div>
+
+      <h4 style="font-size:14px;margin-bottom:8px;">按知名度</h4>
+      <div id="fameWeights" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:16px;"></div>
+
+      <h4 style="font-size:14px;margin-bottom:8px;">按联赛</h4>
+      <div id="leagueWeights" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:16px;"></div>
+
+      <div style="display:flex;gap:10px;">
+        <button class="btn-accent" onclick="saveWeights()" style="font-size:13px;">💾 保存权重</button>
+        <button class="btn-outline" onclick="resetWeights()" style="font-size:13px;">🔄 恢复默认</button>
+      </div>
+      <span id="weightMsg" style="margin-left:10px;font-size:12px;color:var(--green);"></span>
+    </div>
+  </section>
+
+  <!-- Stats -->
+  <div class="stats" id="stats"></div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <input type="text" id="searchInput" placeholder="🔍 搜索姓名/俱乐部/国籍/别名..." oninput="renderTable()">
+    <select id="filterLeague" onchange="renderTable()">
+      <option value="">全部联赛</option>
+    </select>
+    <select id="filterStatus" onchange="renderTable()">
+      <option value="">全部状态</option>
+      <option value="现役">现役</option>
+      <option value="挂靴/赋闲">挂靴/赋闲</option>
+    </select>
+    <select id="filterFame" onchange="renderTable()">
+      <option value="">全部知名度</option>
+      <option value="5">⭐5 超巨</option>
+      <option value="4">⭐4 顶级</option>
+      <option value="3">⭐3 知名</option>
+      <option value="2">⭐2 冷门</option>
+      <option value="1">⭐1 极冷</option>
+    </select>
+    <button class="btn-outline" onclick="clearFilters()">清除筛选</button>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th onclick="sortBy('name')">姓名 <span class="sort-arrow">⇅</span></th>
+          <th onclick="sortBy('league')">联赛</th>
+          <th onclick="sortBy('club')">俱乐部</th>
+          <th onclick="sortBy('nationality')">国籍</th>
+          <th onclick="sortBy('continent')">大洲</th>
+          <th onclick="sortBy('position')">位置</th>
+          <th onclick="sortBy('worldCups')">🏆WC</th>
+          <th onclick="sortBy('ballonDor')">🥇BdO</th>
+          <th onclick="sortBy('ucl')">⭐UCL</th>
+          <th onclick="sortBy('age')">年龄</th>
+          <th onclick="sortBy('fame')">⭐知名度</th>
+          <th onclick="sortBy('status')">状态</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+  <div style="margin-top:8px;font-size:13px;color:var(--text-muted);" id="countLabel"></div>
+</main>
+
+<!-- Add/Edit Modal -->
+<div class="modal-overlay hidden" id="modalOverlay">
+  <div class="modal" id="modalContent"></div>
+</div>
+
+<script src="../js/data.js"></script>
+<script>
+// ==================== State ====================
+var editIndex = -1;
+var sortKey = 'name';
+var sortDir = 1;
+
+// ==================== Stats ====================
+function renderStats() {
+  var filtered = getFilteredPlayers();
+  var active = filtered.filter(function(p) { return p.status === '现役'; });
+  var retired = filtered.filter(function(p) { return p.status === '挂靴/赋闲'; });
+  var total = PLAYERS.length;
+  document.getElementById('stats').innerHTML =
+    '<div class="stat-card"><div class="stat-val">' + total + '</div><div class="stat-label">总球员数</div></div>' +
+    '<div class="stat-card"><div class="stat-val">' + active.length + '</div><div class="stat-label">现役</div></div>' +
+    '<div class="stat-card"><div class="stat-val">' + retired.length + '</div><div class="stat-label">挂靴/赋闲</div></div>' +
+    '<div class="stat-card"><div class="stat-val">' + filtered.length + '</div><div class="stat-label">当前筛选</div></div>';
+}
+
+// ==================== Filters ====================
+function initFilters() {
+  var leagues = {};
+  PLAYERS.forEach(function(p) { leagues[p.league] = true; });
+  var sel = document.getElementById('filterLeague');
+  Object.keys(leagues).sort().forEach(function(l) {
+    var opt = document.createElement('option');
+    opt.value = l; opt.textContent = l; sel.appendChild(opt);
+  });
+}
+
+function getFilteredPlayers() {
+  var q = document.getElementById('searchInput').value.trim().toLowerCase();
+  var league = document.getElementById('filterLeague').value;
+  var status = document.getElementById('filterStatus').value;
+  var fame = document.getElementById('filterFame').value;
+
+  return PLAYERS.filter(function(p) {
+    if (league && p.league !== league) return false;
+    if (status && p.status !== status) return false;
+    if (fame && p.fame !== parseInt(fame)) return false;
+    if (q) {
+      var searchStr = (p.aliases.join(' ') + ' ' + p.name + ' ' + p.club + ' ' + p.nationality + ' ' + p.league).toLowerCase();
+      if (searchStr.indexOf(q) === -1) return false;
+    }
+    return true;
+  });
+}
+
+function clearFilters() {
+  document.getElementById('searchInput').value = '';
+  document.getElementById('filterLeague').value = '';
+  document.getElementById('filterStatus').value = '';
+  document.getElementById('filterFame').value = '';
+  sortKey = 'name'; sortDir = 1;
+  renderTable();
+}
+
+function sortBy(key) {
+  if (sortKey === key) { sortDir = -sortDir; }
+  else { sortKey = key; sortDir = 1; }
+  renderTable();
+}
+
+// ==================== Render Table ====================
+function renderTable() {
+  renderStats();
+  var players = getFilteredPlayers();
+  players.sort(function(a, b) {
+    var va = a[sortKey], vb = b[sortKey];
+    if (typeof va === 'string') return sortDir * va.localeCompare(vb, 'zh');
+    return sortDir * ((va||0) - (vb||0));
+  });
+
+  var html = '';
+  players.forEach(function(p, idx) {
+    var origIdx = PLAYERS.indexOf(p);
+    var rowClass = p.status === '挂靴/赋闲' ? 'row-retired' : '';
+    var statusBadge = p.status === '现役'
+      ? '<span class="badge badge-active">现役</span>'
+      : '<span class="badge badge-retired">挂靴/赋闲</span>';
+    var stars = '⭐'.repeat(p.fame);
+    html += '<tr class="' + rowClass + '">' +
+      '<td><strong>' + esc(p.name) + '</strong></td>' +
+      '<td>' + esc(p.league) + '</td>' +
+      '<td>' + esc(p.club) + '</td>' +
+      '<td>' + esc(p.nationality) + '</td>' +
+      '<td>' + esc(p.continent) + '</td>' +
+      '<td>' + esc(p.position) + '</td>' +
+      '<td>' + p.worldCups + '</td>' +
+      '<td>' + p.ballonDor + '</td>' +
+      '<td>' + p.ucl + '</td>' +
+      '<td>' + p.age + '</td>' +
+      '<td><span class="fame-stars">' + stars + '</span></td>' +
+      '<td>' + statusBadge + '</td>' +
+      '<td class="actions-cell">' +
+        '<button class="btn-outline btn-sm" onclick="openEditModal(' + origIdx + ')">✏️</button>' +
+        '<button class="btn-danger btn-sm" onclick="deletePlayer(' + origIdx + ')">🗑</button>' +
+      '</td>' +
+      '</tr>';
+  });
+  document.getElementById('tableBody').innerHTML = html || '<tr><td colspan="13" style="text-align:center;padding:40px;color:var(--text-muted);">无匹配球员</td></tr>';
+  document.getElementById('countLabel').textContent = '显示 ' + players.length + ' / ' + PLAYERS.length + ' 名球员';
+}
+
+// ==================== Modal ====================
+function openAddModal() {
+  editIndex = -1;
+  showForm('添加球员', {});
+}
+
+function openEditModal(idx) {
+  editIndex = idx;
+  showForm('编辑球员', PLAYERS[idx]);
+}
+
+function showForm(title, p) {
+  var isNew = editIndex === -1;
+  var html = '<h2>' + title + '</h2><div class="form-grid">' +
+    formField('id', 'ID（唯一标识）', p.id || '', 'text', isNew ? '' : 'readonly') +
+    formField('name', '中文名', p.name || '') +
+    formField('aliases', '别名（逗号分隔）', (p.aliases||[]).join(', '), 'textarea') +
+    formField('league', '联赛', p.league || '') +
+    formField('leagueRegion', '联赛区域', p.leagueRegion || '') +
+    formField('club', '俱乐部', p.club || '') +
+    formField('nationality', '国籍', p.nationality || '') +
+    formField('continent', '大洲', p.continent || '') +
+    formField('position', '位置', p.position || '') +
+    formField('positionGroup', '位置组', p.positionGroup || '') +
+    formField('worldCups', '世界杯冠军数', p.worldCups||0, 'number') +
+    formField('ballonDor', '金球奖数', p.ballonDor||0, 'number') +
+    formField('ucl', '欧冠冠军数', p.ucl||0, 'number') +
+    formField('age', '年龄', p.age||20, 'number') +
+    formField('fame', '知名度 (1-5)', p.fame||3, 'number') +
+    formSelect('status', '状态', ['现役','挂靴/赋闲'], p.status||'现役') +
+    '</div>' +
+    '<div class="modal-actions">' +
+      '<button class="btn-outline" onclick="closeModal()">取消</button>' +
+      '<button class="btn-accent" onclick="savePlayer()">💾 保存</button>' +
+    '</div>';
+  document.getElementById('modalContent').innerHTML = html;
+  document.getElementById('modalOverlay').classList.remove('hidden');
+}
+
+function formField(key, label, value, type, extra) {
+  type = type || 'text';
+  extra = extra || '';
+  return '<div class="form-group ' + (key === 'aliases' ? 'full' : '') + '">' +
+    '<label>' + label + '</label>' +
+    (key === 'aliases'
+      ? '<textarea id="f_' + key + '" ' + extra + '>' + esc(value) + '</textarea>'
+      : '<input type="' + type + '" id="f_' + key + '" value="' + esc(String(value)) + '" ' + extra + '>') +
+    '</div>';
+}
+
+function formSelect(key, label, options, selected) {
+  var opts = '';
+  options.forEach(function(o) {
+    opts += '<option value="' + o + '"' + (o === selected ? ' selected' : '') + '>' + o + '</option>';
+  });
+  return '<div class="form-group"><label>' + label + '</label><select id="f_' + key + '">' + opts + '</select></div>';
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.add('hidden');
+}
+
+// ==================== CRUD ====================
+function savePlayer() {
+  var data = {};
+  var fields = ['id','name','league','leagueRegion','club','nationality','continent','position','positionGroup',
+    'worldCups','ballonDor','ucl','age','fame','status'];
+  fields.forEach(function(f) {
+    var el = document.getElementById('f_' + f);
+    if (!el) return;
+    data[f] = el.value;
+  });
+  // Parse numerics
+  data.worldCups = parseInt(data.worldCups) || 0;
+  data.ballonDor = parseInt(data.ballonDor) || 0;
+  data.ucl = parseInt(data.ucl) || 0;
+  data.age = parseInt(data.age) || 20;
+  data.fame = Math.min(5, Math.max(1, parseInt(data.fame) || 3));
+  // Parse aliases
+  var aliasStr = document.getElementById('f_aliases').value;
+  data.aliases = aliasStr.split(/[,，]/).map(function(s) { return s.trim(); }).filter(function(s) { return s; });
+
+  // Validate
+  if (!data.id || !data.name) {
+    showToast('❌ ID 和姓名不能为空', 'error');
+    return;
+  }
+
+  // Check duplicate ID (for new players)
+  if (editIndex === -1) {
+    var dup = PLAYERS.find(function(p) { return p.id === data.id; });
+    if (dup) {
+      showToast('❌ ID "' + data.id + '" 已存在，请换一个', 'error');
+      return;
+    }
+  }
+
+  if (editIndex === -1) {
+    PLAYERS.push(data);
+    showToast('✅ 球员 ' + data.name + ' 已添加', 'success');
+  } else {
+    PLAYERS[editIndex] = data;
+    showToast('✅ 球员 ' + data.name + ' 已更新', 'success');
+  }
+  closeModal();
+  renderTable();
+}
+
+function deletePlayer(idx) {
+  var p = PLAYERS[idx];
+  if (!confirm('确定删除球员 "' + p.name + '" (ID: ' + p.id + ') 吗？\n此操作不可撤销！')) return;
+  PLAYERS.splice(idx, 1);
+  showToast('🗑 球员 ' + p.name + ' 已删除', 'success');
+  renderTable();
+}
+
+// ==================== Export ====================
+function exportData() {
+  // Generate data.js content
+  var lines = [];
+  lines.push('/* ============================================================');
+  lines.push('   足球球员竞猜游戏 — 球员数据库');
+  lines.push('   数据快照: 2026-2027赛季，年龄截至2026-08-01');
+  lines.push('   ============================================================');
+  lines.push('   联赛区域 (leagueRegion):');
+  lines.push('     英格兰, 西班牙, 意大利, 德国, 法国, 美洲, 亚洲, 欧洲其他, 传奇');
+  lines.push('');
+  lines.push('   位置组 (positionGroup):');
+  lines.push('     守门区, 后防线, 中场线, 锋线');
+  lines.push('');
+  lines.push('   fame: 1(极冷门) ~ 5(全球超巨)');
+  lines.push('   status: 现役 | 挂靴/赋闲');
+  lines.push('   ============================================================ */');
+  lines.push('');
+  lines.push('var PLAYERS = [');
+
+  PLAYERS.forEach(function(p, i) {
+    lines.push('  {');
+    lines.push('    id: ' + JSON.stringify(p.id) + ',');
+    lines.push('    name: ' + JSON.stringify(p.name) + ',');
+    lines.push('    aliases: ' + JSON.stringify(p.aliases) + ',');
+    lines.push('    league: ' + JSON.stringify(p.league) + ', leagueRegion: ' + JSON.stringify(p.leagueRegion) + ', club: ' + JSON.stringify(p.club) + ',');
+    lines.push('    nationality: ' + JSON.stringify(p.nationality) + ', continent: ' + JSON.stringify(p.continent) + ', position: ' + JSON.stringify(p.position) + ', positionGroup: ' + JSON.stringify(p.positionGroup) + ',');
+    lines.push('    worldCups: ' + p.worldCups + ', ballonDor: ' + p.ballonDor + ', ucl: ' + p.ucl + ', age: ' + p.age + ',');
+    lines.push('    fame: ' + p.fame + ', status: ' + JSON.stringify(p.status));
+    if (i < PLAYERS.length - 1) {
+      lines.push('  },');
+    } else {
+      lines.push('  }');
+    }
+  });
+
+  lines.push('];');
+  lines.push('');
+  lines.push('console.log("⚽ 球员数据库已加载，共 " + PLAYERS.length + " 名球员");');
+  lines.push('');
+
+  var content = lines.join('\n');
+  var blob = new Blob([content], { type: 'application/javascript' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'data.js';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('📋 data.js 已导出下载（' + PLAYERS.length + ' 名球员）', 'success');
+}
+
+// ==================== Toast ====================
+function showToast(msg, type) {
+  var old = document.querySelector('.toast');
+  if (old) old.remove();
+  var t = document.createElement('div');
+  t.className = 'toast toast-' + (type || 'success');
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(function() { t.remove(); }, 2500);
+}
+
+// ==================== Utils ====================
+function esc(s) {
+  if (!s) return '';
+  var d = document.createElement('div');
+  d.appendChild(document.createTextNode(String(s)));
+  return d.innerHTML;
+}
+
+// Click overlay to close
+document.getElementById('modalOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeModal();
+  if (e.ctrlKey && e.key === 'f') { e.preventDefault(); document.getElementById('searchInput').focus(); }
+});
+
+// ==================== Weights ====================
+var WEIGHTS_KEY = 'football_target_weights';
+
+function loadWeightsFromStorage() {
+  try { return JSON.parse(localStorage.getItem(WEIGHTS_KEY) || '{}'); }
+  catch(e) { return {}; }
+}
+
+function renderWeights() {
+  var w = loadWeightsFromStorage();
+
+  // Status weights
+  var statusNames = {'现役':'🟢 现役','挂靴/赋闲':'🔴 挂靴/赋闲'};
+  var statusHtml = '';
+  ['现役','挂靴/赋闲'].forEach(function(s){
+    var val = w['status_'+s] !== undefined ? w['status_'+s] : (s==='挂靴/赋闲'?0.3:1);
+    statusHtml += '<div style="background:var(--surface-light);padding:12px 14px;border-radius:8px;">' +
+      '<div style="font-size:14px;font-weight:600;margin-bottom:6px;">' + statusNames[s] + ' <span style="color:var(--accent);">×' + val.toFixed(1) + '</span></div>' +
+      '<div style="display:flex;gap:8px;align-items:center;">' +
+        '<span style="font-size:11px;color:var(--text-dim);">×0.1</span>' +
+        '<input type="range" min="0.1" max="5" step="0.1" value="' + val + '" data-key="status_' + s + '" oninput="this.parentNode.parentNode.querySelector(\'span\').textContent=\'×\'+parseFloat(this.value).toFixed(1)" style="flex:1;accent-color:var(--accent);">' +
+        '<span style="font-size:11px;color:var(--text-dim);">×5</span>' +
+      '</div></div>';
+  });
+  document.getElementById('statusWeights').innerHTML = statusHtml;
+
+  // Fame weights (1-5)
+  var fameNames = {1:'⭐1 极冷门',2:'⭐2 冷门',3:'⭐3 知名',4:'⭐4 顶级',5:'⭐5 超巨'};
+  var fameHtml = '';
+  for (var f = 1; f <= 5; f++) {
+    var val = w['fame_'+f] !== undefined ? w['fame_'+f] : 1;
+    fameHtml += '<div style="background:var(--surface-light);padding:10px 12px;border-radius:8px;">' +
+      '<div style="font-size:12px;margin-bottom:4px;">' + fameNames[f] + ' <span style="color:var(--accent);">×' + val.toFixed(1) + '</span></div>' +
+      '<div style="display:flex;gap:6px;align-items:center;"><span style="font-size:10px;color:var(--text-dim);">×0.1</span>' +
+      '<input type="range" min="0.1" max="5" step="0.1" value="' + val + '" data-key="fame_' + f + '" oninput="this.parentNode.parentNode.querySelector(\'span\').textContent=\'×\'+parseFloat(this.value).toFixed(1)" style="flex:1;accent-color:var(--accent);">' +
+      '<span style="font-size:10px;color:var(--text-dim);">×5</span></div></div>';
+  }
+  document.getElementById('fameWeights').innerHTML = fameHtml;
+
+  // League weights
+  var leagues = {};
+  PLAYERS.forEach(function(p) { leagues[p.league] = (leagues[p.league]||0)+1; });
+  var leagueHtml = '';
+  Object.keys(leagues).sort(function(a,b){return leagues[b]-leagues[a];}).forEach(function(l) {
+    var val = w['league_'+l] !== undefined ? w['league_'+l] : 1;
+    leagueHtml += '<div style="background:var(--surface-light);padding:10px 12px;border-radius:8px;">' +
+      '<div style="font-size:11px;margin-bottom:4px;">' + l + ' ('+leagues[l]+'人) <span style="color:var(--accent);">×' + val.toFixed(1) + '</span></div>' +
+      '<div style="display:flex;gap:4px;align-items:center;"><span style="font-size:10px;color:var(--text-dim);">×0.1</span>' +
+      '<input type="range" min="0.1" max="5" step="0.1" value="' + val + '" data-key="league_' + l + '" oninput="this.parentNode.parentNode.querySelector(\'span\').textContent=\'×\'+parseFloat(this.value).toFixed(1)" style="flex:1;accent-color:var(--accent);">' +
+      '<span style="font-size:10px;color:var(--text-dim);">×5</span></div></div>';
+  });
+  document.getElementById('leagueWeights').innerHTML = leagueHtml;
+}
+
+function saveWeights() {
+  var w = {};
+  document.querySelectorAll('#weightContent input[type=range]').forEach(function(el) {
+    w[el.dataset.key] = parseFloat(el.value);
+  });
+  localStorage.setItem(WEIGHTS_KEY, JSON.stringify(w));
+  var msg = document.getElementById('weightMsg');
+  msg.textContent = '✅ 已保存！刷新游戏后生效';
+  setTimeout(function(){msg.textContent='';},3000);
+}
+
+function resetWeights() {
+  localStorage.removeItem(WEIGHTS_KEY);
+  renderWeights();
+  var msg = document.getElementById('weightMsg');
+  msg.textContent = '✅ 已恢复默认（全部×1）';
+  setTimeout(function(){msg.textContent='';},3000);
+}
+
+// ==================== Init ====================
+initFilters();
+renderTable();
+renderWeights();
+</script>
+</body>
+</html>
